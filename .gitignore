@@ -1,0 +1,4 @@
+firmware/planta/secretos.h
+firmware/.pio/
+*.bin
+.DS_Store
