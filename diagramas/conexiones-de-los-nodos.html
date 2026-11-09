@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Conexiones de los nodos</title>
+<style>
+:root {
+  --bg:#f7f6f3; --card:#ffffff; --fg:#1d1d1f; --muted:#62636a; --border:#dddcd6;
+  --accent:#1f6fb2; --placa:#e9f0f7; --placaBorde:#7c98b3; --aviso:#fff4d6; --avisoBorde:#e0b84a;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg:#141518; --card:#1d1f23; --fg:#ececee; --muted:#a2a4ab; --border:#33363c;
+    --accent:#6fb0ea; --placa:#1f2a36; --placaBorde:#5a7896; --aviso:#2e2716; --avisoBorde:#8a7330;
+  }
+}
+:root[data-theme="dark"] {
+  --bg:#141518; --card:#1d1f23; --fg:#ececee; --muted:#a2a4ab; --border:#33363c;
+  --accent:#6fb0ea; --placa:#1f2a36; --placaBorde:#5a7896; --aviso:#2e2716; --avisoBorde:#8a7330;
+}
+* { box-sizing:border-box; }
+body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
+main { max-width:860px; margin:0 auto; padding:24px 16px 48px; }
+h1 { font-size:26px; margin:0 0 6px; }
+h2 { font-size:20px; margin:0 0 4px; }
+h3 { font-size:15px; margin:22px 0 6px; }
+p { margin:6px 0; }
+.sub { color:var(--muted); }
+.card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:18px 16px; margin:18px 0; }
+.aviso { background:var(--aviso); border:1px solid var(--avisoBorde); border-radius:10px; padding:10px 14px; margin:14px 0; }
+.leyenda { display:grid; grid-template-columns:repeat(auto-fill,minmax(190px,1fr)); gap:6px 14px; margin-top:8px; }
+.leyenda div { display:flex; align-items:center; gap:8px; }
+.mues { width:30px; height:10px; border-radius:5px; border:1px solid #777; flex:0 0 auto; }
+.tabla { overflow-x:auto; }
+table { border-collapse:collapse; width:100%; font-size:14px; }
+th, td { text-align:left; padding:6px 8px; border-bottom:1px solid var(--border); vertical-align:top; }
+th { color:var(--muted); font-weight:600; }
+td.pin { font-weight:600; white-space:nowrap; }
+td.cab { white-space:nowrap; }
+td.cab .mues { display:inline-block; vertical-align:middle; margin-right:6px; }
+.fig { overflow-x:auto; margin:4px 0; }
+.fig svg { display:block; width:100%; min-width:560px; max-width:680px; height:auto; }
+.nota { color:var(--muted); font-size:14px; }
+svg text { font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
+.placa { fill:var(--placa); stroke:var(--placaBorde); stroke-width:1.5; }
+.placaT { fill:var(--muted); font-size:12px; font-weight:700; }
+.pinT { fill:var(--fg); font-size:13px; font-weight:700; }
+.cabT { fill:var(--muted); font-size:11px; }
+.tagT { fill:var(--muted); font-size:11px; font-style:italic; }
+.disp { fill:var(--card); stroke:var(--border); stroke-width:1.5; }
+.dispT { fill:var(--fg); font-size:12px; font-weight:700; }
+.derT { fill:var(--fg); font-size:12px; }
+.parte { stroke:var(--fg); stroke-width:1.6; fill:var(--card); }
+.parteT { fill:var(--fg); font-size:12px; font-weight:600; }
+.punto { fill:var(--fg); }
+ul { margin:6px 0; padding-left:20px; }
+@media print {
+  body { background:#fff; color:#000; }
+  .card { border:none; padding:0; page-break-before:always; }
+  .fig svg { min-width:0; }
+}
+</style>
+</head>
+<body>
+<main>
+<h1>Conexiones de los nodos</h1>
+<p class="sub">Planta Hielo Nabarima · Heltec WiFi LoRa 32 V3 · mismos pines que el firmware (<code>firmware/planta/config.h</code>)</p>
+
+<div class="aviso">
+<b>Antes de soldar:</b> confirme cada pin con lo impreso en su placa. En la V3, 3V3, GND y GPIO 4 a 7 están en un conector, y 5V y GPIO 47 en el otro. Trabaje siempre con la placa desconectada y <b>nunca la encienda sin la antena puesta</b>.
+</div>
+
+<section class="card">
+<h2>Colores de cable</h2>
+<p class="nota">Use estos colores en la placa perforada. Las sondas y sensores traen sus propios colores: el diagrama de cada sensor dice a qué cable de la placa va cada uno.</p>
+<div class="leyenda" id="leyenda"></div>
+<p class="nota" style="margin-top:10px">Haga en la placa perforada una tira de <b>3V3 (rojo)</b> y otra de <b>GND (negro)</b>, y de ahí saque un cable a cada sensor.</p>
+</section>
+
+<div id="nodos"></div>
+</main>
+
+<script>
+const COL = { rojo:'#d7392b', negro:'#1f1f1f', naranja:'#f08a24', amarillo:'#e6bf12', blanco:'#f5f5f5', azul:'#2d6cd4', verde:'#2a9a4c', gris:'#8b9099', violeta:'#8b5cf6' };
+const USO = [
+  ['rojo','3V3 (positivo de sensores)'], ['negro','GND (tierra)'], ['naranja','5V de la fuente'],
+  ['amarillo','Datos de temperatura (GPIO 5)'], ['blanco','Datos del ultrasónico (GPIO 47)'],
+  ['azul','Pinza A (GPIO 6)'], ['verde','Pinza B (GPIO 7)'], ['gris','Punto medio 1,65 V'], ['violeta','Detección de luz (GPIO 4)']
+];
+
+// Cada bloque: filas (un cable cada una), piezas entre filas y cajas del aparato a la derecha
+const B = {
+  ds: { titulo:'Sonda de temperatura DS18B20', corto:'DS18B20',
+    filas:[ {pin:'3V3', c:'rojo', der:'Rojo (VCC)'}, {pin:'GPIO 5', c:'amarillo', der:'Amarillo (datos)'}, {pin:'GND', c:'negro', der:'Negro (GND)'} ],
+    piezas:[ {t:'R', x:300, a:0, b:1, v:'4,7 kΩ'} ],
+    disp:[ {t:'Sonda DS18B20', a:0, b:2} ],
+    nota:'La resistencia de 4,7 kΩ va entre el amarillo y el rojo, en la placa perforada. Sin ella la sonda no responde.' },
+  ultra: { titulo:'Sensor de nivel ultrasónico A02YYUW', corto:'Ultrasónico',
+    filas:[ {pin:'3V3', c:'rojo', der:'Rojo (VCC)'}, {pin:'GND', c:'negro', der:'Negro (GND)'}, {pin:'GPIO 47', c:'blanco', der:'Blanco (TX)'}, {nc:true, c:'amarillo', der:'Amarillo (RX): libre'} ],
+    piezas:[], disp:[ {t:'Ultrasónico A02YYUW', a:0, b:3} ],
+    nota:'El sensor manda la distancia por su cable TX, que va a GPIO 47. El RX no se usa: aíslelo con termorretráctil. Si sus colores no coinciden, guíese por la etiqueta del sensor (VCC, GND, RX, TX).' },
+  medio: { titulo:'Punto medio de 1,65 V para las pinzas', corto:'Divisor del punto medio',
+    filas:[ {pin:'3V3', c:'rojo', x2:380}, {x1:230, c:'gris', der:'→ a las pinzas'}, {pin:'GND', c:'negro', x2:380} ],
+    piezas:[ {t:'R', x:230, a:0, b:1, v:'10 kΩ'}, {t:'R', x:230, a:1, b:2, v:'10 kΩ'}, {t:'C', x:330, a:1, b:2, v:'10 µF (+ arriba)'} ],
+    disp:[],
+    nota:'Dos resistencias iguales de 10 kΩ dejan 1,65 V, la mitad de 3,3 V. El condensador de 10 µF va con su pata + (la larga) al punto medio y la − a GND.' },
+  sct000: { titulo:'Pinza SCT-013-000 (Nabarima 1)', corto:'Jack de la pinza',
+    filas:[ {pin:'GPIO 6', c:'azul', der:'Punta (tip)'}, {tag:'punto medio', c:'gris', der:'Manga (sleeve)'}, {nc:true, c:'gris', der:'Anillo (ring): libre'} ],
+    piezas:[ {t:'R', x:300, a:0, b:1, v:'22 Ω'} ],
+    disp:[ {t:'Jack pinza SCT-013-000', a:0, b:2} ],
+    nota:'La resistencia de carga de 22 Ω va entre la punta y la manga, lo más cerca posible del jack. Esta pinza es de salida de corriente: no la deje puesta en el cable de la máquina con el enchufe desconectado.' },
+  acuct: { titulo:'Pinza AcuCT-075-200:333 (Nabarima 2)', corto:'Pinza AcuCT',
+    filas:[ {pin:'GPIO 6', c:'azul', der:'Blanco (+)'}, {tag:'punto medio', c:'gris', der:'Negro (−)'} ],
+    piezas:[], disp:[ {t:'Pinza AcuCT', a:0, b:1} ],
+    nota:'Da 0,333 V a 200 A, así que no lleva resistencia de carga. Confirme en la etiqueta cuál cable es + y cuál −; si quedan al revés la lectura sale igual.' },
+  sct030: { titulo:'Pinzas SCT-013-030 de las bombas', corto:'Jack de bomba',
+    filas:[ {pin:'GPIO 6', c:'azul', der:'Punta (tip)', d:'bomba 1'}, {tag:'punto medio', c:'gris', der:'Manga (sleeve)', d:'bomba 1'},
+            {pin:'GPIO 7', c:'verde', der:'Punta (tip)', gap:26, d:'bomba 2'}, {tag:'punto medio', c:'gris', der:'Manga (sleeve)', d:'bomba 2'} ],
+    piezas:[], disp:[ {t:'Jack bomba 1', a:0, b:1}, {t:'Jack bomba 2', a:2, b:3} ],
+    nota:'La SCT-013-030 trae la resistencia por dentro (1 V a 30 A): no lleva resistencia afuera. Las dos pinzas comparten el mismo punto medio. El anillo de cada jack queda libre.' },
+  luz: { titulo:'Detección de luz (corte de la fuente)', corto:'Divisor de luz',
+    filas:[ {pin:'5V', c:'naranja', x2:300}, {pin:'GPIO 4', c:'violeta', x2:300}, {pin:'GND', c:'negro', x2:300} ],
+    piezas:[ {t:'R', x:300, a:0, b:1, v:'10 kΩ'}, {t:'R', x:300, a:1, b:2, v:'15 kΩ'} ],
+    disp:[],
+    nota:'Con la fuente conectada, GPIO 4 recibe 3 V (hay luz). Si se va la luz, la placa sigue con la batería y el pin cae a 0 V. Compruébelo con el multímetro: con la fuente desconectada, el pin 5V debe marcar 0 V. Si marca algo, tome los 5 V directo del cable de la fuente.' }
+};
+
+const ENERGIA = `<h3>Alimentación y antena</h3><ul>
+<li><b>USB-C</b> ← fuente de 5 V, 2 A.</li>
+<li><b>Conector JST 1,25 (BAT)</b> ← batería LiPo 3,7 V 3000 mAh. Antes de enchufarla, compare el rojo con la marca <b>+</b> de la placa: algunos cables vienen invertidos y queman la placa.</li>
+<li><b>Conector IPEX (LoRa)</b> ← antena de 915 MHz. Nunca encienda la placa sin ella.</li></ul>`;
+
+const NODOS = [
+  { t:'Maestro', id:0, donde:'En la oficina o donde llegue el WiFi. Recibe por LoRa y envía al sistema.', bloques:[], extra:'<p class="nota">El maestro no lleva sensores: solo fuente, antena y, si quiere, la batería.</p>' },
+  { t:'Nodo 1 · Nabarima 1', id:1, donde:'Junto a Nabarima 1. La sonda entra al cuarto frío; el ultrasónico va sobre el tanque de agua y sal; la pinza en un cable de fase de la máquina.', bloques:['ds','ultra','medio','sct000','luz'] },
+  { t:'Nodo 2 · Nabarima 2', id:2, donde:'Junto a Nabarima 2. Igual que el nodo 1, pero con la pinza AcuCT.', bloques:['ds','ultra','medio','acuct','luz'] },
+  { t:'Nodo 3 · Cuarto de bombas', id:3, donde:'El ultrasónico va sobre el tanque subterráneo; una pinza en un cable de fase de cada bomba.', bloques:['ultra','medio','sct030','luz'] },
+  { t:'Nodo 4 · Tanque de reserva', id:4, donde:'El ultrasónico va sobre el tanque de reserva; la sonda mide la temperatura ambiente dentro del protector, a 1,5 m del suelo y a la sombra.', bloques:['ds','ultra','luz'] }
+];
+
+const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+
+function diagrama(b) {
+  const BX = 118, DX = 468, W = 640;
+  let y = 44;
+  const ys = b.filas.map((f, i) => { if (i) y += 40 + (f.gap || 0); return y; });
+  const H = y + 32;
+  const enCaja = new Set();
+  b.disp.forEach(d => { for (let i = d.a; i <= d.b; i++) enCaja.add(i); });
+  let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(b.titulo)}">`;
+  s += `<rect class="placa" x="8" y="10" width="${BX - 8}" height="${H - 20}" rx="8"/><text class="placaT" x="18" y="28">Heltec V3</text>`;
+  b.disp.forEach(d => {
+    const top = ys[d.a] - 32, bot = ys[d.b] + 16;
+    s += `<rect class="disp" x="${DX}" y="${top}" width="${W - DX - 6}" height="${bot - top}" rx="8"/>`;
+    s += `<text class="dispT" x="${DX + 10}" y="${top + 15}">${esc(d.t)}</text>`;
+  });
+  b.filas.forEach((f, i) => {
+    const yy = ys[i];
+    const x1 = f.nc ? DX - 44 : f.pin ? BX : (f.x1 || 200);
+    const x2 = f.x2 || DX;
+    const dash = f.nc ? ' stroke-dasharray="6 5"' : '';
+    s += `<line x1="${x1}" y1="${yy}" x2="${x2}" y2="${yy}" stroke="#777" stroke-width="7" stroke-linecap="round"${dash}/>`;
+    s += `<line x1="${x1}" y1="${yy}" x2="${x2}" y2="${yy}" stroke="${COL[f.c]}" stroke-width="4.5" stroke-linecap="round"${dash}/>`;
+    if (f.pin) s += `<text class="pinT" x="${BX - 8}" y="${yy + 5}" text-anchor="end">${esc(f.pin)}</text><circle class="punto" cx="${BX}" cy="${yy}" r="3.5"/>`;
+    if (f.tag) s += `<text class="tagT" x="${x1 - 8}" y="${yy + 4}" text-anchor="end">${esc(f.tag)}</text><circle class="punto" cx="${x1}" cy="${yy}" r="3.5"/>`;
+    if (!f.nc) s += `<text class="cabT" x="${f.pin ? BX + 12 : x1 + 64}" y="${yy - 8}">${f.c}</text>`;
+    if (f.der) {
+      if (enCaja.has(i)) s += `<circle class="punto" cx="${DX}" cy="${yy}" r="3.5"/><text class="derT" x="${DX + 10}" y="${yy + 4}">${esc(f.der)}</text>`;
+      else s += `<text class="derT" x="${x2 + 8}" y="${yy + 4}">${esc(f.der)}</text>`;
+    }
+  });
+  b.piezas.forEach(p => {
+    const ya = ys[p.a], yb = ys[p.b], m = (ya + yb) / 2;
+    if (p.t === 'R') {
+      s += `<line class="parte" x1="${p.x}" y1="${ya}" x2="${p.x}" y2="${yb}"/><rect class="parte" x="${p.x - 6}" y="${m - 11}" width="12" height="22" rx="2"/>`;
+    } else {
+      s += `<line class="parte" x1="${p.x}" y1="${ya}" x2="${p.x}" y2="${m - 3}"/><line class="parte" x1="${p.x}" y1="${m + 3}" x2="${p.x}" y2="${yb}"/>`;
+      s += `<line class="parte" x1="${p.x - 11}" y1="${m - 3}" x2="${p.x + 11}" y2="${m - 3}" stroke-width="3"/><line class="parte" x1="${p.x - 11}" y1="${m + 3}" x2="${p.x + 11}" y2="${m + 3}" stroke-width="3"/>`;
+    }
+    s += `<circle class="punto" cx="${p.x}" cy="${ya}" r="3.5"/><circle class="punto" cx="${p.x}" cy="${yb}" r="3.5"/>`;
+    s += `<text class="parteT" x="${p.x + 14}" y="${m + 4}">${esc(p.v)}</text>`;
+  });
+  return s + '</svg>';
+}
+
+const ORDEN = ['5V', '3V3', 'GND', 'GPIO 4', 'GPIO 5', 'GPIO 6', 'GPIO 7', 'GPIO 47'];
+function tabla(n) {
+  const pines = {};
+  n.bloques.forEach(k => {
+    const b = B[k];
+    b.filas.forEach(f => {
+      if (!f.pin) return;
+      const p = pines[f.pin] || (pines[f.pin] = { c:f.c, a:[] });
+      const destino = b.corto + (f.d ? ' ' + f.d : '') + (f.der && !f.der.startsWith('→') ? ' · ' + f.der : '');
+      if (!p.a.includes(destino)) p.a.push(destino);
+    });
+  });
+  const filas = ORDEN.filter(p => pines[p]).map(p => `<tr><td class="pin">${p}</td><td class="cab"><span class="mues" style="background:${COL[pines[p].c]}"></span>${pines[p].c}</td><td>${pines[p].a.map(esc).join('<br>')}</td></tr>`).join('');
+  return `<div class="tabla"><table><thead><tr><th>Pin de la placa</th><th>Cable</th><th>Va a</th></tr></thead><tbody>${filas}</tbody></table></div>`;
+}
+
+document.getElementById('leyenda').innerHTML = USO.map(([c, u]) => `<div><span class="mues" style="background:${COL[c]}"></span><span><b>${c}</b> · ${u}</span></div>`).join('');
+
+document.getElementById('nodos').innerHTML = NODOS.map(n => `
+<section class="card">
+  <h2>${n.t}</h2>
+  <p class="sub">NODO_ID ${n.id} · ${n.donde}</p>
+  ${n.bloques.length ? '<h3>Resumen de pines</h3>' + tabla(n) : ''}
+  ${n.bloques.map(k => `<h3>${B[k].titulo}</h3><div class="fig">${diagrama(B[k])}</div><p class="nota">${B[k].nota}</p>`).join('')}
+  ${ENERGIA}
+  ${n.extra || ''}
+</section>`).join('');
+</script>
+</body>
+</html>
